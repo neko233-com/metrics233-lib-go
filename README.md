@@ -26,9 +26,21 @@ if err := active.Set(42); err != nil { return err }
 if err := client.Push(ctx); err != nil { return err }
 ```
 
-Use an Editor/Admin workspace token supplied by your application. The SDK never logs tokens or server response
+Use the dedicated ingest-only token supplied by your application for a token-mode server. The SDK never logs tokens or server response
 bodies and rejects credentials embedded in URLs. Redirects are not followed. The caller owns TLS/proxy settings;
 `WithHTTPClient` accepts an existing `http.Client` without modifying its transport.
+
+For fixed reporting credentials, configure the server with `METRICSPANEL_AUTH=token`, a private management
+`METRICSPANEL_TOKEN` (16+ characters), and a **different** `METRICSPANEL_INGEST_TOKEN` (32–8192 printable ASCII
+characters without whitespace; server v0.2.2+).
+Pass the ingest-only value to `WithToken`; `METRICS233_TOKEN` in these examples is your application's environment
+variable, not an automatic server setting. Keep the management token private.
+All label views and chained Counter/Gauge/Batch operations retain this client configuration, and every push
+sends `Authorization: Bearer …`. Missing or wrong tokens are rejected with HTTP 401 and cannot write samples.
+The ingest-only token cannot query data, manage alerts or change source access. Source-IP block/allowlist policy
+still applies. Legacy servers also accept the workspace token, which has management access; do not distribute it
+as a reporting credential. Local authentication uses its existing service-account roles rather than this separate
+token-mode setting. Never expose an unconfigured loopback development server through a public proxy.
 
 For periodic reporting, explicitly run the loop in an application-owned goroutine:
 
